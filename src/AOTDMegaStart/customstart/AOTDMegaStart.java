@@ -18,7 +18,6 @@ import data.kaysaar.aotd.vok.campaign.econ.globalproduction.models.megastructure
 import exerelin.campaign.ExerelinSetupData;
 import exerelin.campaign.PlayerFactionStore;
 import exerelin.campaign.customstart.CustomStart;
-import exerelin.utilities.StringHelper;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -31,6 +30,7 @@ public class AOTDMegaStart extends CustomStart {
         // enforce normal difficulty
         data.setDifficulty("normal");
         ExerelinSetupData.getInstance().easyMode = false;
+        ExerelinSetupData.getInstance().freeStart = true;
         PlayerFactionStore.setPlayerFactionIdNGC(Factions.PLAYER);
 
         // open Nexerelin's custom fleet picker instead of adding a fixed ship
