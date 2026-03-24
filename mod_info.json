@@ -2,7 +2,7 @@
   "id": "megastructure_start",
   "name": "zz Megastructure Start",
   "author": "gamer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Nexerelin custom start in a custom system with Coronal Hypershunt, Nidavellir Complex, Pluto Mining Station, a Terran and a Gas Giant.",
   "gameVersion": "0.98a-RC8",
   "jars": ["jars/AOTDMegaStart.jar"],

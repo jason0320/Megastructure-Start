@@ -8,16 +8,11 @@ import com.fs.starfarer.api.campaign.econ.MarketConditionAPI;
 import com.fs.starfarer.api.campaign.rules.MemKeys;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.characters.CharacterCreationData;
-import com.fs.starfarer.api.characters.MutableCharacterStatsAPI;
-import com.fs.starfarer.api.fleet.FleetMemberAPI;
-import com.fs.starfarer.api.fleet.FleetMemberType;
 import com.fs.starfarer.api.impl.MusicPlayerPluginImpl;
-import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
 import com.fs.starfarer.api.impl.campaign.ids.*;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.MiscellaneousThemeGenerator;
-import com.fs.starfarer.api.impl.campaign.rulecmd.AddRemoveCommodity;
 import com.fs.starfarer.api.impl.campaign.rulecmd.AoTDMegastructureRules;
-import com.fs.starfarer.api.impl.campaign.rulecmd.FireBest;
+import com.fs.starfarer.api.impl.campaign.rulecmd.newgame.Nex_NGCStartFleetOptionsV2;
 import com.fs.starfarer.api.util.Misc;
 import data.kaysaar.aotd.vok.campaign.econ.globalproduction.models.megastructures.GPBaseMegastructure;
 import exerelin.campaign.ExerelinSetupData;
@@ -32,40 +27,14 @@ public class AOTDMegaStart extends CustomStart {
 
     @Override
     public void execute(InteractionDialogAPI dialog, Map<String, MemoryAPI> memoryMap) {
-        // Set a flag that our start was chosen:
         CharacterCreationData data = (CharacterCreationData) memoryMap.get(MemKeys.LOCAL).get("$characterData");
-
-        String vid = "kite_original_Stock";
-        data.addStartingFleetMember(vid, FleetMemberType.SHIP);
-        FleetMemberAPI temp = Global.getFactory().createFleetMember(FleetMemberType.SHIP, vid);
-
-        int fuel = (int)temp.getFuelCapacity();
-
-        data.getStartingCargo().addItems(CargoAPI.CargoItemType.RESOURCES, Commodities.CREW, 2);
-        data.getStartingCargo().addItems(CargoAPI.CargoItemType.RESOURCES, Commodities.SUPPLIES, 15);
-        data.getStartingCargo().addItems(CargoAPI.CargoItemType.RESOURCES, Commodities.FUEL, fuel);
-
-        AddRemoveCommodity.addFleetMemberGainText(temp.getVariant(), dialog.getTextPanel());
-        AddRemoveCommodity.addCommodityGainText(Commodities.CREW, 2, dialog.getTextPanel());
-        AddRemoveCommodity.addCommodityGainText(Commodities.SUPPLIES, 15, dialog.getTextPanel());
-        AddRemoveCommodity.addCommodityGainText(Commodities.FUEL, fuel, dialog.getTextPanel());
-
-        data.getStartingCargo().getCredits().add(2000);
-        AddRemoveCommodity.addCreditsGainText(2000, dialog.getTextPanel());
-        MutableCharacterStatsAPI stats = data.getPerson().getStats();
-        stats.addPoints(1);
-
         // enforce normal difficulty
         data.setDifficulty("normal");
         ExerelinSetupData.getInstance().easyMode = false;
         PlayerFactionStore.setPlayerFactionIdNGC(Factions.PLAYER);
 
-        CampaignFleetAPI tempFleet = FleetFactoryV3.createEmptyFleet(
-                PlayerFactionStore.getPlayerFactionIdNGC(), FleetTypes.PATROL_SMALL, null);
-        tempFleet.getFleetData().addFleetMember(temp);
-        tempFleet.getFleetData().setFlagship(temp);
-        temp.setCaptain(data.getPerson());
-        temp.getRepairTracker().setCR(0.7f);
+        // open Nexerelin's custom fleet picker instead of adding a fixed ship
+        new Nex_NGCStartFleetOptionsV2().addOptions(dialog, memoryMap);
 
         data.addScript(new Script() {
             @Override
@@ -96,14 +65,13 @@ public class AOTDMegaStart extends CustomStart {
                 });
             }
         });
+
         data.addScriptBeforeTimePass(new Script() {
             public void run() {
-
                 Global.getSector().getMemoryWithoutUpdate().set("$aotdPerfectStart", true);
                 Global.getSector().getMemoryWithoutUpdate().set("$nex_startLocation", "aotd_perfect_sys_planet");
 
                 SectorAPI sector = Global.getSector();
-                MemoryAPI mem = Global.getSector().getPlayerMemoryWithoutUpdate();
 
                 String id = "aotd_perfect_sys";
                 StarSystemAPI sys = Global.getSector().createStarSystem(id);
@@ -278,12 +246,5 @@ public class AOTDMegaStart extends CustomStart {
                 array.setCircularOrbitPointingDown(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
             }
         });
-        dialog.getVisualPanel().showFleetInfo(StringHelper.getString("exerelin_ngc", "playerFleet", true),
-                tempFleet, null, null);
-        dialog.getOptionPanel().addOption(StringHelper.getString("done", true), "nex_NGCDone");
-        dialog.getOptionPanel().addOption(StringHelper.getString("back", true), "nex_NGCStartBack");
-        ExerelinSetupData.getInstance().randomStartLocation = false;
-        ExerelinSetupData.getInstance().freeStart = true;
-        FireBest.fire(null, dialog, memoryMap, "ExerelinNGCStep4");
     }
 }
