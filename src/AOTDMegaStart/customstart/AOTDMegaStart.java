@@ -18,8 +18,11 @@ import data.kaysaar.aotd.vok.campaign.econ.globalproduction.models.megastructure
 import exerelin.campaign.ExerelinSetupData;
 import exerelin.campaign.PlayerFactionStore;
 import exerelin.campaign.customstart.CustomStart;
+import exerelin.utilities.NexConfig;
+import exerelin.utilities.NexFactionConfig;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class AOTDMegaStart extends CustomStart {
@@ -32,8 +35,7 @@ public class AOTDMegaStart extends CustomStart {
         ExerelinSetupData.getInstance().easyMode = false;
         ExerelinSetupData.getInstance().freeStart = true;
         PlayerFactionStore.setPlayerFactionIdNGC(Factions.PLAYER);
-
-        // open Nexerelin's custom fleet picker instead of adding a fixed ship
+        patchFactionStartPools(Factions.PLAYER);
         new Nex_NGCStartFleetOptionsV2().addOptions(dialog, memoryMap);
 
         data.addScript(new Script() {
@@ -246,5 +248,36 @@ public class AOTDMegaStart extends CustomStart {
                 array.setCircularOrbitPointingDown(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
             }
         });
+    }
+
+    private void patchFactionStartPools(String targetFactionId) {
+        NexFactionConfig target = NexConfig.getFactionConfig(targetFactionId);
+        if (target == null) return;
+
+        target.startShips.clear();
+
+        for (NexFactionConfig.StartFleetType type : NexFactionConfig.StartFleetType.values()) {
+            NexFactionConfig.StartFleetSet mergedSet = new NexFactionConfig.StartFleetSet(type);
+
+            for (FactionAPI faction : Global.getSector().getAllFactions()) {
+                String factionId = faction.getId();
+                NexFactionConfig conf = NexConfig.getFactionConfig(factionId);
+                if (conf == null) continue;
+
+                NexFactionConfig.StartFleetSet set = conf.startShips.get(type);
+                if (set == null) continue;
+
+                for (List<String> fleet : set.fleets) {
+                    if (fleet == null || fleet.isEmpty()) continue;
+
+                    // IMPORTANT: copy each fleet as-is
+                    mergedSet.addFleet(new ArrayList<>(fleet));
+                }
+            }
+
+            if (!mergedSet.fleets.isEmpty()) {
+                target.startShips.put(type, mergedSet);
+            }
+        }
     }
 }
