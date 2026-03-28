@@ -10,6 +10,7 @@ import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.characters.CharacterCreationData;
 import com.fs.starfarer.api.impl.MusicPlayerPluginImpl;
 import com.fs.starfarer.api.impl.campaign.ids.*;
+import com.fs.starfarer.api.impl.campaign.procgen.themes.BaseThemeGenerator;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.MiscellaneousThemeGenerator;
 import com.fs.starfarer.api.impl.campaign.rulecmd.AoTDMegastructureRules;
 import com.fs.starfarer.api.impl.campaign.rulecmd.newgame.Nex_NGCStartFleetOptionsV2;
@@ -20,10 +21,13 @@ import exerelin.campaign.PlayerFactionStore;
 import exerelin.campaign.customstart.CustomStart;
 import exerelin.utilities.NexConfig;
 import exerelin.utilities.NexFactionConfig;
+import lunalib.lunaSettings.LunaSettings;
 
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class AOTDMegaStart extends CustomStart {
 
@@ -75,11 +79,34 @@ public class AOTDMegaStart extends CustomStart {
 
                 SectorAPI sector = Global.getSector();
 
-                String id = "aotd_perfect_sys";
-                StarSystemAPI sys = Global.getSector().createStarSystem(id);
+                String sysid = "new sol";
+                StarSystemAPI sys = Global.getSector().createStarSystem(sysid);
                 sys.setProcgen(true);
                 sys.setName("New Sol");
-                sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, -26000f, 11000f, 600f);
+
+                boolean randomMode = false;
+                if (LunaSettings.getBoolean("megastructure_start", "randomMode")!=null) {
+                    randomMode = LunaSettings.getBoolean("megastructure_start", "randomMode");
+                }
+                float customXpos = -26000f;
+                if (LunaSettings.getFloat("megastructure_start", "customXpos")!=null) {
+                    customXpos = LunaSettings.getFloat("megastructure_start", "customXpos");
+                }
+                float customYpos = 11000f;
+                if (LunaSettings.getFloat("megastructure_start", "customYpos")!=null) {
+                    customYpos = LunaSettings.getFloat("megastructure_start", "customYpos");
+                }
+                if (randomMode){
+                    LocationAPI hyperspace = Global.getSector().getHyperspace();
+                    float sysX = hyperspace.getLocation().getX();
+                    float sysY = hyperspace.getLocation().getY();
+                    Random rand = new Random();
+                    sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, rand.nextFloat() * sysX, rand.nextFloat() * sysY, 600f);
+                }
+                else {
+                    sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, customXpos, customYpos, 600f);
+                }
+                //sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, -26000f, 11000f, 600f);
                 sys.generateAnchorIfNeeded();
                 sys.autogenerateHyperspaceJumpPoints(true, true);
 
@@ -90,7 +117,7 @@ public class AOTDMegaStart extends CustomStart {
                         Planets.PLANET_TERRAN,
                         Misc.random.nextFloat() * 360f,
                         200f + Misc.random.nextFloat() * 100f, // orbit radius
-                        2500f + Misc.random.nextFloat() * 500f, // distance from star
+                        2000f + Misc.random.nextFloat() * 500f, // distance from star
                         350f // size
                 );
 
@@ -135,26 +162,22 @@ public class AOTDMegaStart extends CustomStart {
                 market.setAdmin(sector.getPlayerPerson());
 
                 // 1) Coronal Hypershunt
-                SectorEntityToken coronal = sys.addCustomEntity(
-                        "aotd_coronal_hypershunt",
-                        "Coronal Hypershunt",
-                        Entities.CORONAL_TAP,
-                        Factions.NEUTRAL);
-                coronal.setCircularOrbit(
-                        sys.getStar(),
-                        Misc.random.nextFloat() * 360f,
-                        sys.getStar().getRadius() + 100f,
-                        200f
-                );
-
+                CustomEntitySpecAPI spec = Global.getSettings().getCustomEntitySpec(Entities.CORONAL_TAP);
+                BaseThemeGenerator.EntityLocation loc = new BaseThemeGenerator.EntityLocation();
+                float orbitRadius = sys.getStar().getRadius() + spec.getDefaultRadius() + 100f;
+                float orbitDays = orbitRadius / 20f;
+                Random random = new Random();
+                loc.orbit = Global.getFactory().createCircularOrbitPointingDown(sys.getStar(), random.nextFloat() * 360f, orbitRadius, orbitDays);
+                BaseThemeGenerator.AddedEntity entity = BaseThemeGenerator.addEntity(random, sys, loc, Entities.CORONAL_TAP, Factions.NEUTRAL);
+                
                 // Create a new nidavelir
                 PlanetAPI nidavelir = sys.addPlanet(
                         "aotd_nidavelir",
                         sys.getStar(),
                         "New Mars",
-                        Planets.BARREN,
+                        Planets.ARID,
                         Misc.random.nextFloat() * 360f,
-                        200f + Misc.random.nextFloat() * 100f, // orbit radius
+                        100f + Misc.random.nextFloat() * 100f, // orbit radius
                         3000f + Misc.random.nextFloat() * 500f, // distance from star
                         350f // size
                 );
@@ -162,16 +185,10 @@ public class AOTDMegaStart extends CustomStart {
                 nidavelir.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
                 String token = nidavelir.getMarket().addCondition("aotd_nidavelir_complex");
                 nidavelir.getMarket().getSpecificCondition(token).setSurveyed(false);
-                nidavelir.getMarket().removeCondition(Conditions.RUINS_EXTENSIVE);
-                nidavelir.getMarket().removeCondition(Conditions.RUINS_SCATTERED);
-                nidavelir.getMarket().removeCondition(Conditions.RUINS_WIDESPREAD);
-                if (!nidavelir.getMarket().hasCondition(Conditions.RUINS_VAST)) {
-                    nidavelir.getMarket().addCondition(Conditions.RUINS_VAST);
-                }
+                nidavelir.getMarket().addCondition(Conditions.HABITABLE);
+                nidavelir.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
+                nidavelir.getMarket().addCondition(Conditions.RUINS_VAST);
                 nidavelir.getMarket().addCondition(Conditions.VERY_HOT);
-                nidavelir.getMarket().removeCondition(Conditions.HOT);
-                nidavelir.getMarket().removeCondition(Conditions.COLD);
-                nidavelir.getMarket().removeCondition(Conditions.VERY_COLD);
                 nidavelir.getMarket().addCondition(Conditions.RARE_ORE_ULTRARICH);
                 nidavelir.getMarket().addCondition(Conditions.ORE_ULTRARICH);
                 Global.getSector().getPlayerMemoryWithoutUpdate().set("$aotd_mega_system_id_"+mega.getSpec().getMegastructureID(),nidavelir.getStarSystem().getId());
@@ -181,16 +198,15 @@ public class AOTDMegaStart extends CustomStart {
                         "aotd_pluto",
                         sys.getStar(),
                         "New Pluto",
-                        Planets.BARREN,
+                        Planets.ARID,
                         Misc.random.nextFloat() * 360f,
-                        200f + Misc.random.nextFloat() * 100f, // orbit radius
-                        3500f + Misc.random.nextFloat() * 500f, // distance from star
+                        100f + Misc.random.nextFloat() * 100f, // orbit radius
+                        4000f + Misc.random.nextFloat() * 500f, // distance from star
                         350f // size
                 );
-                pluto.getMarket().addCondition(Conditions.VERY_HOT);
-                pluto.getMarket().removeCondition(Conditions.HOT);
-                pluto.getMarket().removeCondition(Conditions.COLD);
-                pluto.getMarket().removeCondition(Conditions.VERY_COLD);
+                pluto.getMarket().addCondition(Conditions.HABITABLE);
+                pluto.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
+                pluto.getMarket().addCondition(Conditions.RUINS_VAST);
                 pluto.getMarket().addCondition(Conditions.RARE_ORE_ULTRARICH);
                 pluto.getMarket().addCondition(Conditions.ORE_ULTRARICH);
 
@@ -204,20 +220,24 @@ public class AOTDMegaStart extends CustomStart {
                 token1.getMemoryWithoutUpdate().set(MusicPlayerPluginImpl.MUSIC_SET_MEM_KEY, "aotd_mega");
                 MiscellaneousThemeGenerator.makeDiscoverable(token1, 40000, 3000f);
 
-                // Create a gas giant
-                PlanetAPI jupiter = sys.addPlanet(
-                        "aotd_gas",
+                // Create a very cold tundra
+                PlanetAPI minerva = sys.addPlanet(
+                        "aotd_minerva",
                         sys.getStar(),
-                        "New Jupiter",
-                        Planets.GAS_GIANT,
+                        "New Minerva",
+                        Planets.TUNDRA,
                         Misc.random.nextFloat() * 360f,
-                        200f + Misc.random.nextFloat() * 100f, // orbit radius
-                        4000f + Misc.random.nextFloat() * 500f, // distance from star
+                        100f + Misc.random.nextFloat() * 100f, // orbit radius
+                        5000f + Misc.random.nextFloat() * 500f, // distance from star
                         350f // size
                 );
-                jupiter.getMarket().addCondition(Conditions.VERY_HOT);
-                jupiter.getMarket().addCondition(Conditions.VOLATILES_ABUNDANT);
-                jupiter.getMarket().addCondition(Conditions.HIGH_GRAVITY);
+                minerva.getMarket().addCondition(Conditions.HABITABLE);
+                minerva.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
+                minerva.getMarket().addCondition(Conditions.RUINS_VAST);
+                minerva.getMarket().addCondition(Conditions.VERY_COLD);
+                minerva.getMarket().addCondition(Conditions.RARE_ORE_RICH);
+                minerva.getMarket().addCondition(Conditions.ORE_RICH);
+                minerva.getMarket().addCondition(Conditions.VOLATILES_ABUNDANT);
 
                 //Gate
                 SectorEntityToken calvera_gate = sys.addCustomEntity("aotd_perfect_sys_gate",
@@ -269,8 +289,6 @@ public class AOTDMegaStart extends CustomStart {
 
                 for (List<String> fleet : set.fleets) {
                     if (fleet == null || fleet.isEmpty()) continue;
-
-                    // IMPORTANT: copy each fleet as-is
                     mergedSet.addFleet(new ArrayList<>(fleet));
                 }
             }

@@ -1,0 +1,4 @@
+fieldID,fieldName,fieldType,defaultValue,secondaryValue,fieldDescription,minValue,maxValue,tab
+randomMode,Enable Random Mode,Boolean,FALSE,,Random starting system location (Requires new save).,,,
+customXpos,Custom X Position,Double,-26000.0,,Custom starting system X position (Requires new save).,-104000,104000,
+customYpos,Custom Y Position,Double,11000.0,,Custom starting system Y position (Requires new save).,-164000,164000,

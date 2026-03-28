@@ -4,7 +4,7 @@
 			"id":"AOTDMegaStart",
 			"name":"Relics of the Past",
 			"difficulty":"Easy",
-			"desc":"Start in a custom system with Coronal Hypershunt, Nidavellir Complex, Pluto Mining Station, a Terran and a Gas Giant.",
+			"desc":"Start in a custom system with Coronal Hypershunt, Nidavellir Complex, Pluto Mining Station, a Terran and a Tundra.",
 			"className":"AOTDMegaStart.customstart.AOTDMegaStart",
 		},
 	],
