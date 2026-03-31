@@ -125,7 +125,7 @@ public class AOTDMegaStart extends CustomStart {
                 SectorEntityToken planet = sys.getEntityById("aotd_perfect_sys_planet");
 
                 MarketAPI market = Global.getFactory().createMarket(
-                        "aotd_perfect_sys_colony", planet.getName(), 6);
+                        "aotd_perfect_sys_colony", planet.getName(), 5);
                 market.setPrimaryEntity(planet);
                 market.setFactionId(Factions.PLAYER);
                 planet.setFaction(Factions.PLAYER);
@@ -136,13 +136,13 @@ public class AOTDMegaStart extends CustomStart {
                 market.addCondition(Conditions.ORE_RICH);
                 market.addCondition(Conditions.RARE_ORE_RICH);
                 market.addCondition(Conditions.ORGANICS_PLENTIFUL);
-                market.addCondition(Conditions.POPULATION_6);
+                market.addCondition(Conditions.POPULATION_5);
                 market.addIndustry(Industries.POPULATION);
                 market.addIndustry(Industries.SPACEPORT);
                 market.addIndustry(Industries.BATTLESTATION);
+                market.addIndustry(Industries.WAYSTATION);
                 market.addIndustry(Industries.FARMING);
                 market.addIndustry(Industries.MINING);
-                market.addIndustry(Industries.HEAVYINDUSTRY);
                 market.addIndustry(Industries.LIGHTINDUSTRY);
                 market.addIndustry(Industries.PATROLHQ);
                 market.addSubmarket(Submarkets.SUBMARKET_OPEN);
