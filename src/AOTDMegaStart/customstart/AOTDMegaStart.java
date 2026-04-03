@@ -139,12 +139,14 @@ public class AOTDMegaStart extends CustomStart {
                 market.addCondition(Conditions.POPULATION_5);
                 market.addIndustry(Industries.POPULATION);
                 market.addIndustry(Industries.SPACEPORT);
-                market.addIndustry(Industries.BATTLESTATION);
                 market.addIndustry(Industries.WAYSTATION);
+                market.addIndustry(Industries.BATTLESTATION);
                 market.addIndustry(Industries.FARMING);
                 market.addIndustry(Industries.MINING);
-                market.addIndustry(Industries.LIGHTINDUSTRY);
+                market.addIndustry(Industries.COMMERCE);
                 market.addIndustry(Industries.PATROLHQ);
+                market.addIndustry(Industries.GROUNDDEFENSES);
+                market.addSubmarket(Submarkets.LOCAL_RESOURCES);
                 market.addSubmarket(Submarkets.SUBMARKET_OPEN);
                 market.addSubmarket(Submarkets.SUBMARKET_STORAGE);
 
