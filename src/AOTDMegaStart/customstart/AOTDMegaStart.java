@@ -10,6 +10,7 @@ import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.characters.CharacterCreationData;
 import com.fs.starfarer.api.impl.MusicPlayerPluginImpl;
 import com.fs.starfarer.api.impl.campaign.ids.*;
+import com.fs.starfarer.api.impl.campaign.procgen.*;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.BaseThemeGenerator;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.MiscellaneousThemeGenerator;
 import com.fs.starfarer.api.impl.campaign.rulecmd.AoTDMegastructureRules;
@@ -23,263 +24,426 @@ import exerelin.utilities.NexConfig;
 import exerelin.utilities.NexFactionConfig;
 import lunalib.lunaSettings.LunaSettings;
 
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 public class AOTDMegaStart extends CustomStart {
+
+    private static final String SYSTEM_ID = "new sol";
+    private static final String STAR_ID = "new sol";
+    private static final String PLAYER_PLANET_ID = "new terra";
+    private static final String NID_ID = "new mars";
+    private static final String PLUTO_ID = "new pluto";
+    private static final String PLUTO_STATION_ID = "new pluto station";
+    private static final String MINERVA_ID = "new minerva";
+    private static final String GATE_ID = "new sol gate";
+    private static final String BUOY_ID = "new sol buoy";
+    private static final String RELAY_ID = "new sol relay";
+    private static final String ARRAY_ID = "new sol array";
+
+    public class RandomNameGenerator {
+
+        // Random STAR name
+        public static String getRandomStarName() {
+            ProcgenUsedNames.NamePick pick = ProcgenUsedNames.pickName(
+                    NameGenData.TAG_STAR,
+                    null, // no parent
+                    null  // no lagrange type
+            );
+            return pick.nameWithRomanSuffixIfAny;
+        }
+
+        // Random PLANET name (optionally linked to star/system name)
+        public static String getRandomPlanetName(String parentName) {
+            ProcgenUsedNames.NamePick pick = ProcgenUsedNames.pickName(
+                    NameGenData.TAG_PLANET,
+                    parentName, // makes names like "X IV"
+                    null
+            );
+            return pick.nameWithRomanSuffixIfAny;
+        }
+
+        // Random MOON name
+        public static String getRandomMoonName(String parentName) {
+            ProcgenUsedNames.NamePick pick = ProcgenUsedNames.pickName(
+                    NameGenData.TAG_MOON,
+                    parentName,
+                    null
+            );
+            return pick.nameWithRomanSuffixIfAny;
+        }
+    }
 
     @Override
     public void execute(InteractionDialogAPI dialog, Map<String, MemoryAPI> memoryMap) {
         CharacterCreationData data = (CharacterCreationData) memoryMap.get(MemKeys.LOCAL).get("$characterData");
-        // enforce normal difficulty
+
         data.setDifficulty("normal");
         ExerelinSetupData.getInstance().easyMode = false;
         ExerelinSetupData.getInstance().freeStart = true;
+
         PlayerFactionStore.setPlayerFactionIdNGC(Factions.PLAYER);
         patchFactionStartPools(Factions.PLAYER);
+
         new Nex_NGCStartFleetOptionsV2().addOptions(dialog, memoryMap);
 
-        data.addScript(new Script() {
+        data.addScriptBeforeTimePass(new Script() {
             @Override
             public void run() {
-                Global.getSector().addScript(new com.fs.starfarer.api.util.DelayedActionScript(0.1f) {
-                    @Override
-                    public void doAction() {
-                        SectorAPI sector = Global.getSector();
-                        CampaignFleetAPI fleet = sector.getPlayerFleet();
-                        SectorEntityToken home = sector.getEntityById("aotd_perfect_sys_planet");
-                        MarketAPI homeMarket = home != null ? home.getMarket() : null;
-
-                        if (fleet != null && home != null) {
-                            exerelin.campaign.StartSetupPostTimePass.sendPlayerFleetToLocation(fleet, home);
-                        }
-
-                        for (MarketAPI m : new ArrayList<>(sector.getEconomy().getMarketsCopy())) {
-                            if (m == null || m == homeMarket) continue;
-
-                            if (Factions.PLAYER.equals(m.getFactionId()) || m.isPlayerOwned()) {
-                                if (m.getPrimaryEntity() != null) {
-                                    m.getPrimaryEntity().setMarket(null);
-                                }
-                                sector.getEconomy().removeMarket(m);
-                            }
-                        }
-                    }
-                });
-            }
-        });
-
-        data.addScriptBeforeTimePass(new Script() {
-            public void run() {
-                Global.getSector().getMemoryWithoutUpdate().set("$aotdPerfectStart", true);
-                Global.getSector().getMemoryWithoutUpdate().set("$nex_startLocation", "aotd_perfect_sys_planet");
-
                 SectorAPI sector = Global.getSector();
+                CampaignFleetAPI fleet = sector.getPlayerFleet();
+                SectorEntityToken home = sector.getEntityById(PLAYER_PLANET_ID);
 
-                String sysid = "new sol";
-                StarSystemAPI sys = Global.getSector().createStarSystem(sysid);
-                sys.setProcgen(true);
-                sys.setName("New Sol");
-
-                boolean randomMode = false;
-                if (LunaSettings.getBoolean("megastructure_start", "randomMode")!=null) {
-                    randomMode = LunaSettings.getBoolean("megastructure_start", "randomMode");
+                if (fleet != null && home != null) {
+                    exerelin.campaign.StartSetupPostTimePass.sendPlayerFleetToLocation(fleet, home);
                 }
-                float customXpos = -26000f;
-                if (LunaSettings.getFloat("megastructure_start", "customXpos")!=null) {
-                    customXpos = LunaSettings.getFloat("megastructure_start", "customXpos");
+
+                boolean nodupeMode = Boolean.TRUE.equals(LunaSettings.getBoolean("megastructure_start", "nodupeMode"));
+                if (nodupeMode){
+                    cleanupExtraAotdContent();
                 }
-                float customYpos = 11000f;
-                if (LunaSettings.getFloat("megastructure_start", "customYpos")!=null) {
-                    customYpos = LunaSettings.getFloat("megastructure_start", "customYpos");
-                }
-                if (randomMode){
-                    LocationAPI hyperspace = Global.getSector().getHyperspace();
-                    float sysX = hyperspace.getLocation().getX();
-                    float sysY = hyperspace.getLocation().getY();
-                    Random rand = new Random();
-                    sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, rand.nextFloat() * sysX, rand.nextFloat() * sysY, 600f);
-                }
-                else {
-                    sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, customXpos, customYpos, 600f);
-                }
-                //sys.initStar("aotd_perfect_sys_star", StarTypes.BLUE_GIANT, 600f, -26000f, 11000f, 600f);
-                sys.generateAnchorIfNeeded();
-                sys.autogenerateHyperspaceJumpPoints(true, true);
-
-                sys.addPlanet(
-                        "aotd_perfect_sys_planet",
-                        sys.getStar(),
-                        "New Terra",
-                        Planets.PLANET_TERRAN,
-                        Misc.random.nextFloat() * 360f,
-                        200f + Misc.random.nextFloat() * 100f, // orbit radius
-                        2000f + Misc.random.nextFloat() * 500f, // distance from star
-                        350f // size
-                );
-
-
-                SectorEntityToken planet = sys.getEntityById("aotd_perfect_sys_planet");
-
-                MarketAPI market = Global.getFactory().createMarket(
-                        "aotd_perfect_sys_colony", planet.getName(), 5);
-                market.setPrimaryEntity(planet);
-                market.setFactionId(Factions.PLAYER);
-                planet.setFaction(Factions.PLAYER);
-
-                market.addCondition(Conditions.HABITABLE);
-                market.addCondition(Conditions.MILD_CLIMATE);
-                market.addCondition(Conditions.FARMLAND_RICH);
-                market.addCondition(Conditions.ORE_RICH);
-                market.addCondition(Conditions.RARE_ORE_RICH);
-                market.addCondition(Conditions.ORGANICS_PLENTIFUL);
-                market.addCondition(Conditions.POPULATION_5);
-                market.addIndustry(Industries.POPULATION);
-                market.addIndustry(Industries.SPACEPORT);
-                market.addIndustry(Industries.WAYSTATION);
-                market.addIndustry(Industries.BATTLESTATION);
-                market.addIndustry(Industries.FARMING);
-                market.addIndustry(Industries.MINING);
-                market.addIndustry(Industries.COMMERCE);
-                market.addIndustry(Industries.PATROLHQ);
-                market.addIndustry(Industries.GROUNDDEFENSES);
-                market.addSubmarket(Submarkets.LOCAL_RESOURCES);
-                market.addSubmarket(Submarkets.SUBMARKET_OPEN);
-                market.addSubmarket(Submarkets.SUBMARKET_STORAGE);
-
-                Global.getSector().getEconomy().addMarket(market, true);
-                planet.setMarket(market);
-
-                market.setPlayerOwned(true);
-                market.setAdmin(sector.getPlayerPerson());
-
-                market.setSurveyLevel(MarketAPI.SurveyLevel.FULL);
-                for (MarketConditionAPI cond : market.getConditions())
-                {
-                    cond.setSurveyed(true);
-                }
-                market.setAdmin(sector.getPlayerPerson());
-
-                // 1) Coronal Hypershunt
-                CustomEntitySpecAPI spec = Global.getSettings().getCustomEntitySpec(Entities.CORONAL_TAP);
-                BaseThemeGenerator.EntityLocation loc = new BaseThemeGenerator.EntityLocation();
-                float orbitRadius = sys.getStar().getRadius() + spec.getDefaultRadius() + 100f;
-                float orbitDays = orbitRadius / 20f;
-                Random random = new Random();
-                loc.orbit = Global.getFactory().createCircularOrbitPointingDown(sys.getStar(), random.nextFloat() * 360f, orbitRadius, orbitDays);
-                BaseThemeGenerator.AddedEntity entity = BaseThemeGenerator.addEntity(random, sys, loc, Entities.CORONAL_TAP, Factions.NEUTRAL);
-                
-                // Create a new nidavelir
-                PlanetAPI nidavelir = sys.addPlanet(
-                        "aotd_nidavelir",
-                        sys.getStar(),
-                        "New Mars",
-                        Planets.ARID,
-                        Misc.random.nextFloat() * 360f,
-                        100f + Misc.random.nextFloat() * 100f, // orbit radius
-                        3000f + Misc.random.nextFloat() * 500f, // distance from star
-                        350f // size
-                );
-                GPBaseMegastructure mega = AoTDMegastructureRules.putMegastructure(nidavelir, "aotd_nidavelir");
-                nidavelir.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
-                String token = nidavelir.getMarket().addCondition("aotd_nidavelir_complex");
-                nidavelir.getMarket().getSpecificCondition(token).setSurveyed(false);
-                nidavelir.getMarket().addCondition(Conditions.HABITABLE);
-                nidavelir.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
-                nidavelir.getMarket().addCondition(Conditions.RUINS_VAST);
-                nidavelir.getMarket().addCondition(Conditions.VERY_HOT);
-                nidavelir.getMarket().addCondition(Conditions.RARE_ORE_ULTRARICH);
-                nidavelir.getMarket().addCondition(Conditions.ORE_ULTRARICH);
-                Global.getSector().getPlayerMemoryWithoutUpdate().set("$aotd_mega_system_id_"+mega.getSpec().getMegastructureID(),nidavelir.getStarSystem().getId());
-
-                // Create a new nidavelir
-                PlanetAPI pluto = sys.addPlanet(
-                        "aotd_pluto",
-                        sys.getStar(),
-                        "New Pluto",
-                        Planets.ARID,
-                        Misc.random.nextFloat() * 360f,
-                        100f + Misc.random.nextFloat() * 100f, // orbit radius
-                        4000f + Misc.random.nextFloat() * 500f, // distance from star
-                        350f // size
-                );
-                pluto.getMarket().addCondition(Conditions.HABITABLE);
-                pluto.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
-                pluto.getMarket().addCondition(Conditions.RUINS_VAST);
-                pluto.getMarket().addCondition(Conditions.RARE_ORE_ULTRARICH);
-                pluto.getMarket().addCondition(Conditions.ORE_ULTRARICH);
-
-                String t = pluto.getMarket().addCondition("aotd_pluto_station");
-                pluto.getMarket().getSpecificCondition(t).setSurveyed(false);
-                GPBaseMegastructure mega1 = AoTDMegastructureRules.putMegastructure(pluto, "aotd_pluto_station");
-                SectorEntityToken token1 = pluto.getMarket().getStarSystem().addCustomEntity("aotd_pluto_station", "Pluto Mining Station", "aotd_pluto_station", Factions.NEUTRAL);
-                float angle = pluto.getCircularOrbitAngle();
-                float period = pluto.getCircularOrbitPeriod(); // 270 : height
-                token1.setCircularOrbitPointingDown(pluto, angle, pluto.getRadius() + 270 + 70, period);
-                token1.getMemoryWithoutUpdate().set(MusicPlayerPluginImpl.MUSIC_SET_MEM_KEY, "aotd_mega");
-                MiscellaneousThemeGenerator.makeDiscoverable(token1, 40000, 3000f);
-
-                // Create a very cold tundra
-                PlanetAPI minerva = sys.addPlanet(
-                        "aotd_minerva",
-                        sys.getStar(),
-                        "New Minerva",
-                        Planets.TUNDRA,
-                        Misc.random.nextFloat() * 360f,
-                        100f + Misc.random.nextFloat() * 100f, // orbit radius
-                        5000f + Misc.random.nextFloat() * 500f, // distance from star
-                        350f // size
-                );
-                minerva.getMarket().addCondition(Conditions.HABITABLE);
-                minerva.getMarket().addCondition(Conditions.FARMLAND_ADEQUATE);
-                minerva.getMarket().addCondition(Conditions.RUINS_VAST);
-                minerva.getMarket().addCondition(Conditions.VERY_COLD);
-                minerva.getMarket().addCondition(Conditions.RARE_ORE_RICH);
-                minerva.getMarket().addCondition(Conditions.ORE_RICH);
-                minerva.getMarket().addCondition(Conditions.VOLATILES_ABUNDANT);
-
-                //Gate
-                SectorEntityToken calvera_gate = sys.addCustomEntity("aotd_perfect_sys_gate",
-                        "Gate",
-                        "inactive_gate",
-                        null);
-                calvera_gate.setCircularOrbit(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
-
-                //Buoy
-                SectorEntityToken buoy = sys.addCustomEntity("aotd_perfect_sys_buoy",
-                        "Buoy",
-                        "nav_buoy",
-                        "player");
-                buoy.setCircularOrbitPointingDown(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
-
-                //Relay
-                SectorEntityToken relay = sys.addCustomEntity("aotd_perfect_sys_relay",
-                        "Relay",
-                        "comm_relay",
-                        "player");
-                relay.setCircularOrbitPointingDown(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
-
-                //Array
-                SectorEntityToken array = sys.addCustomEntity("aotd_perfect_sys_array",
-                        "Array",
-                        "sensor_array",
-                        "player");
-                array.setCircularOrbitPointingDown(sys.getStar(), Misc.random.nextFloat() * 360f, 4000f + Misc.random.nextFloat() * 500f, 90); //focus, angle, orbit radius, orbit days
+                Global.getSector().getMemoryWithoutUpdate().set("$aotdPerfectStart", true);
+                Global.getSector().getMemoryWithoutUpdate().set("$nex_startLocation", PLAYER_PLANET_ID);
+                spawnRandomBlueGiantSystem();
             }
         });
+    }
+
+    private void spawnRandomBlueGiantSystem() {
+        SectorAPI sector = Global.getSector();
+
+        StarSystemAPI sys = sector.getStarSystem(SYSTEM_ID);
+        if (sys == null) {
+            sys = sector.createStarSystem(SYSTEM_ID);
+        }
+
+        sys.setProcgen(true);
+        String systemName = "New Sol";
+        sys.setName(systemName);
+        boolean randomMode = Boolean.TRUE.equals(LunaSettings.getBoolean("megastructure_start", "randomMode"));
+
+        float x;
+        float y;
+        if (randomMode) {
+            x = (Misc.random.nextFloat() * 2f - 1f) * 40000f;
+            y = (Misc.random.nextFloat() * 2f - 1f) * 40000f;
+        } else {
+            Float xSetting = LunaSettings.getFloat("megastructure_start", "customXpos");
+            Float ySetting = LunaSettings.getFloat("megastructure_start", "customYpos");
+            x = xSetting != null ? xSetting : -26000f;
+            y = ySetting != null ? ySetting : 11000f;
+        }
+
+        sys.initStar(STAR_ID, StarTypes.BLUE_GIANT, 600f, x, y, 600f);
+        sys.generateAnchorIfNeeded();
+        sys.autogenerateHyperspaceJumpPoints(true, true);
+        sys.addTag(Tags.HAS_CORONAL_TAP);
+        boolean newsolMode = Boolean.TRUE.equals(LunaSettings.getBoolean("megastructure_start", "newsolMode"));
+        String starName = "New Sol";
+        if (newsolMode){
+            starName = RandomNameGenerator.getRandomStarName();
+            sys.getStar().setName(starName);
+            sys.setBaseName(starName);
+        }
+        String parentName = sys.getName();
+
+        PlanetAPI playerPlanet = sys.addPlanet(
+                PLAYER_PLANET_ID,
+                sys.getStar(),
+                "New Terra",
+                Planets.PLANET_TERRAN,
+                randAngle(),
+                randOrbitRadius(50f, 300f),
+                randOrbitRadius(1800f, 3500f),
+                randOrbitDays(1500f, 2600f)
+        );
+        if (newsolMode) {
+            String playerPlanetName = RandomNameGenerator.getRandomPlanetName(starName);
+            playerPlanet.setName(playerPlanetName);
+        }
+
+        MarketAPI playerMarket = createMarket(playerPlanet, "aotd_perfect_sys_colony", 5, Factions.PLAYER);
+        playerMarket.addCondition(Conditions.HABITABLE);
+        playerMarket.addCondition(Conditions.MILD_CLIMATE);
+        playerMarket.addCondition(Conditions.FARMLAND_RICH);
+        playerMarket.addCondition(Conditions.ORE_RICH);
+        playerMarket.addCondition(Conditions.RARE_ORE_RICH);
+        playerMarket.addCondition(Conditions.ORGANICS_PLENTIFUL);
+        playerMarket.addCondition(Conditions.POPULATION_5);
+        playerMarket.addIndustry(Industries.POPULATION);
+        playerMarket.addIndustry(Industries.SPACEPORT);
+        playerMarket.addIndustry(Industries.WAYSTATION);
+        playerMarket.addIndustry(Industries.BATTLESTATION);
+        playerMarket.addIndustry(Industries.FARMING);
+        playerMarket.addIndustry(Industries.MINING);
+        playerMarket.addIndustry(Industries.COMMERCE);
+        playerMarket.addIndustry(Industries.PATROLHQ);
+        playerMarket.addIndustry(Industries.GROUNDDEFENSES);
+        playerMarket.addSubmarket(Submarkets.LOCAL_RESOURCES);
+        playerMarket.addSubmarket(Submarkets.SUBMARKET_OPEN);
+        playerMarket.addSubmarket(Submarkets.SUBMARKET_STORAGE);
+        finalizePlayerMarket(playerMarket);
+
+        CustomEntitySpecAPI spec = Global.getSettings().getCustomEntitySpec(Entities.CORONAL_TAP);
+        BaseThemeGenerator.EntityLocation loc = new BaseThemeGenerator.EntityLocation();
+        float orbitRadius = sys.getStar().getRadius() + spec.getDefaultRadius() + 100f;
+        float orbitDays = orbitRadius / 20f;
+        loc.orbit = Global.getFactory().createCircularOrbitPointingDown(
+                sys.getStar(),
+                randAngle(),
+                orbitRadius,
+                orbitDays
+        );
+        BaseThemeGenerator.addEntity(Misc.random, sys, loc, Entities.CORONAL_TAP, Factions.NEUTRAL);
+
+        PlanetAPI nidavelir = sys.addPlanet(
+                NID_ID,
+                sys.getStar(),
+                "New Mars",
+                Planets.ARID,
+                randAngle(),
+                randOrbitRadius(50f, 300f),
+                randOrbitRadius(2600f, 4200f),
+                randOrbitDays(2200f, 3200f)
+        );
+        if (newsolMode) {
+            String nidavelirName = RandomNameGenerator.getRandomPlanetName(starName);
+            nidavelir.setName(nidavelirName);
+        }
+        MarketAPI nidMarket = nidavelir.getMarket();
+        nidMarket.setFactionId(Factions.NEUTRAL);
+        nidavelir.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
+
+        GPBaseMegastructure nidMega = AoTDMegastructureRules.putMegastructure(nidavelir, "aotd_nidavelir");
+        String nidCond = nidMarket.addCondition("aotd_nidavelir_complex");
+        nidMarket.getSpecificCondition(nidCond).setSurveyed(false);
+        nidMarket.addCondition(Conditions.HABITABLE);
+        nidMarket.addCondition(Conditions.FARMLAND_ADEQUATE);
+        nidMarket.addCondition(Conditions.RUINS_VAST);
+        nidMarket.addCondition(Conditions.VERY_HOT);
+        nidMarket.addCondition(Conditions.RARE_ORE_ULTRARICH);
+        nidMarket.addCondition(Conditions.ORE_ULTRARICH);
+        nidMarket.setSurveyLevel(MarketAPI.SurveyLevel.NONE);
+
+        if (nidMega != null && nidMega.getSpec() != null) {
+            sector.getPlayerMemoryWithoutUpdate().set(
+                    "$aotd_mega_system_id_" + nidMega.getSpec().getMegastructureID(),
+                    nidavelir.getStarSystem().getId()
+            );
+        }
+
+        PlanetAPI pluto = sys.addPlanet(
+                PLUTO_ID,
+                sys.getStar(),
+                "New Pluto",
+                Planets.ARID,
+                randAngle(),
+                randOrbitRadius(50f, 300f),
+                randOrbitRadius(4200f, 6200f),
+                randOrbitDays(3200f, 4800f)
+        );
+        if (newsolMode) {
+            String plutoName = RandomNameGenerator.getRandomPlanetName(starName);
+            pluto.setName(plutoName);
+        }
+        MarketAPI plutoMarket = pluto.getMarket();
+        plutoMarket.setFactionId(Factions.NEUTRAL);
+        String plutoCond = plutoMarket.addCondition("aotd_pluto_station");
+        plutoMarket.getSpecificCondition(plutoCond).setSurveyed(false);
+        plutoMarket.addCondition(Conditions.HABITABLE);
+        plutoMarket.addCondition(Conditions.FARMLAND_ADEQUATE);
+        plutoMarket.addCondition(Conditions.RUINS_VAST);
+        plutoMarket.addCondition(Conditions.RARE_ORE_ULTRARICH);
+        plutoMarket.addCondition(Conditions.ORE_ULTRARICH);
+        plutoMarket.setSurveyLevel(MarketAPI.SurveyLevel.NONE);
+
+        GPBaseMegastructure plutoMega = AoTDMegastructureRules.putMegastructure(pluto, "aotd_pluto_station");
+        SectorEntityToken station = sys.addCustomEntity(
+                PLUTO_STATION_ID,
+                "Pluto Mining Station",
+                "aotd_pluto_station",
+                Factions.NEUTRAL
+        );
+        station.setCircularOrbitPointingDown(pluto, pluto.getCircularOrbitAngle(), pluto.getRadius() + 220f, pluto.getCircularOrbitPeriod());
+        station.getMemoryWithoutUpdate().set(MusicPlayerPluginImpl.MUSIC_SET_MEM_KEY, "aotd_mega");
+        MiscellaneousThemeGenerator.makeDiscoverable(station, 40000, 3000f);
+
+        if (plutoMega != null && plutoMega.getSpec() != null) {
+            sector.getPlayerMemoryWithoutUpdate().set(
+                    "$aotd_mega_system_id_" + plutoMega.getSpec().getMegastructureID(),
+                    pluto.getStarSystem().getId()
+            );
+        }
+
+        PlanetAPI minerva = sys.addPlanet(
+                MINERVA_ID,
+                sys.getStar(),
+                "New Minerva",
+                Planets.TUNDRA,
+                randAngle(),
+                randOrbitRadius(50f, 300f),
+                randOrbitRadius(6200f, 9000f),
+                randOrbitDays(4500f, 6500f)
+        );
+        if (newsolMode) {
+            String minervaName = RandomNameGenerator.getRandomPlanetName(starName);
+            minerva.setName(minervaName);
+        }
+        MarketAPI minervaMarket = minerva.getMarket();
+        minervaMarket.setFactionId(Factions.NEUTRAL);
+        minervaMarket.addCondition(Conditions.HABITABLE);
+        minervaMarket.addCondition(Conditions.FARMLAND_ADEQUATE);
+        minervaMarket.addCondition(Conditions.RUINS_VAST);
+        minervaMarket.addCondition(Conditions.VERY_COLD);
+        minervaMarket.addCondition(Conditions.RARE_ORE_RICH);
+        minervaMarket.addCondition(Conditions.ORE_RICH);
+        minervaMarket.addCondition(Conditions.VOLATILES_ABUNDANT);
+        minervaMarket.setSurveyLevel(MarketAPI.SurveyLevel.NONE);
+
+        SectorEntityToken gate = sys.addCustomEntity(GATE_ID, "Inactive Gate", "inactive_gate", null);
+        gate.setCircularOrbit(sys.getStar(), randAngle(), randOrbitRadius(7000f, 10000f), 90);
+
+        SectorEntityToken buoy = sys.addCustomEntity(BUOY_ID, "Nav Bouy", "nav_buoy", "player");
+        buoy.setCircularOrbitPointingDown(sys.getStar(), randAngle(), randOrbitRadius(7000f, 10000f), 90);
+
+        SectorEntityToken relay = sys.addCustomEntity(RELAY_ID, "Comm Relay", "comm_relay", "player");
+        relay.setCircularOrbitPointingDown(sys.getStar(), randAngle(), randOrbitRadius(7000f, 10000f), 90);
+
+        SectorEntityToken array = sys.addCustomEntity(ARRAY_ID, "Sensor Array", "sensor_array", "player");
+        array.setCircularOrbitPointingDown(sys.getStar(), randAngle(), randOrbitRadius(7000f, 10000f), 90);
+    }
+
+    private void cleanupExtraAotdContent() {
+        SectorAPI sector = Global.getSector();
+        StarSystemAPI kept = sector.getStarSystem(SYSTEM_ID);
+
+        for (StarSystemAPI sys : new ArrayList<>(sector.getStarSystems())) {
+            if (sys == null) continue;
+
+            if (sys == kept) {
+                for (SectorEntityToken entity : new ArrayList<>(sys.getAllEntities())) {
+                    if (entity == null) continue;
+                    if (!isAotdEntity(entity)) continue;
+                    if (isWhitelistedEntity(entity)) continue;
+
+                    removeEntityAndMarket(sector, sys, entity);
+                }
+                continue;
+            }
+
+            boolean removedAny = false;
+
+            for (SectorEntityToken entity : new ArrayList<>(sys.getAllEntities())) {
+                if (entity == null) continue;
+                if (!isAotdEntity(entity)) continue;
+
+                removeEntityAndMarket(sector, sys, entity);
+                removedAny = true;
+            }
+
+            if (removedAny && sys.getAllEntities().size() <= 1) {
+                sector.removeStarSystemNextFrame(sys);
+            }
+        }
+    }
+
+    private void removeEntityAndMarket(SectorAPI sector, StarSystemAPI sys, SectorEntityToken entity) {
+        MarketAPI market = entity.getMarket();
+        if (market != null) {
+            entity.setMarket(null);
+            if (market.getPrimaryEntity() == entity) {
+                market.setPrimaryEntity(null);
+            }
+            sector.getEconomy().removeMarket(market);
+        }
+        sys.removeEntity(entity);
+    }
+
+    private boolean isAotdEntity(SectorEntityToken entity) {
+        String id = entity.getId();
+        if (id != null && id.startsWith("aotd_")) return true;
+
+        MarketAPI market = entity.getMarket();
+        if (market != null) {
+            String marketId = market.getId();
+            if (marketId != null && marketId.startsWith("aotd_")) return true;
+
+            for (MarketConditionAPI cond : market.getConditions()) {
+                if (cond != null && cond.getId() != null && cond.getId().startsWith("aotd_")) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isWhitelistedEntity(SectorEntityToken entity) {
+        String id = entity.getId();
+        return SYSTEM_ID.equals(id)
+                || STAR_ID.equals(id)
+                || PLAYER_PLANET_ID.equals(id)
+                || NID_ID.equals(id)
+                || PLUTO_ID.equals(id)
+                || MINERVA_ID.equals(id)
+                || PLUTO_STATION_ID.equals(id)
+                || GATE_ID.equals(id)
+                || BUOY_ID.equals(id)
+                || RELAY_ID.equals(id)
+                || ARRAY_ID.equals(id);
+    }
+
+    private MarketAPI createMarket(PlanetAPI planet, String marketId, int size, String factionId) {
+        MarketAPI market = Global.getFactory().createMarket(marketId, planet.getName(), size);
+        market.setPrimaryEntity(planet);
+        market.setFactionId(factionId);
+        planet.setFaction(factionId);
+        planet.setMarket(market);
+        Global.getSector().getEconomy().addMarket(market, true);
+        return market;
+    }
+
+    private void finalizePlayerMarket(MarketAPI market) {
+        market.setPlayerOwned(true);
+        market.setAdmin(Global.getSector().getPlayerPerson());
+        market.setSurveyLevel(MarketAPI.SurveyLevel.FULL);
+
+        for (MarketConditionAPI cond : market.getConditions()) {
+            cond.setSurveyed(true);
+        }
+    }
+
+    private float randAngle() {
+        return Misc.random.nextFloat() * 360f;
+    }
+
+    private float randOrbitRadius(float min, float max) {
+        return min + Misc.random.nextFloat() * (max - min);
+    }
+
+    private float randOrbitDays(float min, float max) {
+        return min + Misc.random.nextFloat() * (max - min);
     }
 
     private void patchFactionStartPools(String targetFactionId) {
         NexFactionConfig target = NexConfig.getFactionConfig(targetFactionId);
         if (target == null) return;
 
-        target.startShips.clear();
-
         for (NexFactionConfig.StartFleetType type : NexFactionConfig.StartFleetType.values()) {
-            NexFactionConfig.StartFleetSet mergedSet = new NexFactionConfig.StartFleetSet(type);
+            NexFactionConfig.StartFleetSet targetSet = target.startShips.get(type);
+            if (targetSet == null) {
+                targetSet = new NexFactionConfig.StartFleetSet(type);
+                target.startShips.put(type, targetSet);
+            }
+
+            java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+
+            for (List<String> fleet : targetSet.fleets) {
+                if (fleet != null && !fleet.isEmpty()) {
+                    seen.add(fleetSignature(fleet));
+                }
+            }
 
             for (FactionAPI faction : Global.getSector().getAllFactions()) {
                 String factionId = faction.getId();
@@ -291,13 +455,17 @@ public class AOTDMegaStart extends CustomStart {
 
                 for (List<String> fleet : set.fleets) {
                     if (fleet == null || fleet.isEmpty()) continue;
-                    mergedSet.addFleet(new ArrayList<>(fleet));
+
+                    String sig = fleetSignature(fleet);
+                    if (seen.add(sig)) {
+                        targetSet.addFleet(new ArrayList<>(fleet));
+                    }
                 }
             }
-
-            if (!mergedSet.fleets.isEmpty()) {
-                target.startShips.put(type, mergedSet);
-            }
         }
+    }
+
+    private String fleetSignature(List<String> fleet) {
+        return String.join("||", fleet);
     }
 }

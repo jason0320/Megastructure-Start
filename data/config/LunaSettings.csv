@@ -1,4 +1,6 @@
 fieldID,fieldName,fieldType,defaultValue,secondaryValue,fieldDescription,minValue,maxValue,tab
-randomMode,Enable Random Mode,Boolean,FALSE,,Random starting system location (Requires new save).,,,
+randomMode,Enable Random Location,Boolean,FALSE,,Randomise starting system location (Requires new save).,,,
+newsolMode,Enable Random Name,Boolean,FALSE,,Randomise all starting star and planets names (Requires new save).,,,
+nodupeMode,Enable No Duplicate Mode,Boolean,FALSE,,Remove all other Nidavellir Complex and Pluto Mining Station than starting system (Requires new save).,,,
 customXpos,Custom X Position,Double,-26000.0,,Custom starting system X position (Requires new save).,-104000,104000,
 customYpos,Custom Y Position,Double,11000.0,,Custom starting system Y position (Requires new save).,-164000,164000,
