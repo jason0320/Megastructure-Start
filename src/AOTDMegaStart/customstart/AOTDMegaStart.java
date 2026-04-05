@@ -51,6 +51,9 @@ public class AOTDMegaStart extends CustomStart {
                     null, // no parent
                     null  // no lagrange type
             );
+            if (!pick.spec.isReusable()) {
+                ProcgenUsedNames.notifyUsed(pick.nameWithRomanSuffixIfAny);
+            }
             return pick.nameWithRomanSuffixIfAny;
         }
 
@@ -61,6 +64,9 @@ public class AOTDMegaStart extends CustomStart {
                     parentName, // makes names like "X IV"
                     null
             );
+            if (!pick.spec.isReusable()) {
+                ProcgenUsedNames.notifyUsed(pick.nameWithRomanSuffixIfAny);
+            }
             return pick.nameWithRomanSuffixIfAny;
         }
 
@@ -71,6 +77,9 @@ public class AOTDMegaStart extends CustomStart {
                     parentName,
                     null
             );
+            if (!pick.spec.isReusable()) {
+                ProcgenUsedNames.notifyUsed(pick.nameWithRomanSuffixIfAny);
+            }
             return pick.nameWithRomanSuffixIfAny;
         }
     }
