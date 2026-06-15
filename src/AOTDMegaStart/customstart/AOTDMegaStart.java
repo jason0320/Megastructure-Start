@@ -13,10 +13,8 @@ import com.fs.starfarer.api.impl.campaign.ids.*;
 import com.fs.starfarer.api.impl.campaign.procgen.*;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.BaseThemeGenerator;
 import com.fs.starfarer.api.impl.campaign.procgen.themes.MiscellaneousThemeGenerator;
-import com.fs.starfarer.api.impl.campaign.rulecmd.AoTDMegastructureRules;
 import com.fs.starfarer.api.impl.campaign.rulecmd.newgame.Nex_NGCStartFleetOptionsV2;
 import com.fs.starfarer.api.util.Misc;
-import data.kaysaar.aotd.vok.campaign.econ.globalproduction.models.megastructures.GPBaseMegastructure;
 import exerelin.campaign.ExerelinSetupData;
 import exerelin.campaign.PlayerFactionStore;
 import exerelin.campaign.customstart.CustomStart;
@@ -224,7 +222,6 @@ public class AOTDMegaStart extends CustomStart {
         nidMarket.setFactionId(Factions.NEUTRAL);
         nidavelir.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
 
-        GPBaseMegastructure nidMega = AoTDMegastructureRules.putMegastructure(nidavelir, "aotd_nidavelir");
         String nidCond = nidMarket.addCondition("aotd_nidavelir_complex");
         nidMarket.getSpecificCondition(nidCond).setSurveyed(false);
         nidMarket.addCondition(Conditions.HABITABLE);
@@ -233,14 +230,10 @@ public class AOTDMegaStart extends CustomStart {
         nidMarket.addCondition(Conditions.VERY_HOT);
         nidMarket.addCondition(Conditions.RARE_ORE_ULTRARICH);
         nidMarket.addCondition(Conditions.ORE_ULTRARICH);
+        nidMarket.getMemoryWithoutUpdate().set("$aotd_mega_already", true);
         nidMarket.setSurveyLevel(MarketAPI.SurveyLevel.NONE);
 
-        if (nidMega != null && nidMega.getSpec() != null) {
-            sector.getPlayerMemoryWithoutUpdate().set(
-                    "$aotd_mega_system_id_" + nidMega.getSpec().getMegastructureID(),
-                    nidavelir.getStarSystem().getId()
-            );
-        }
+
 
         PlanetAPI pluto = sys.addPlanet(
                 PLUTO_ID,
@@ -265,25 +258,8 @@ public class AOTDMegaStart extends CustomStart {
         plutoMarket.addCondition(Conditions.RUINS_VAST);
         plutoMarket.addCondition(Conditions.RARE_ORE_ULTRARICH);
         plutoMarket.addCondition(Conditions.ORE_ULTRARICH);
+        plutoMarket.getMemoryWithoutUpdate().set("$aotd_mega_already", true);
         plutoMarket.setSurveyLevel(MarketAPI.SurveyLevel.NONE);
-
-        GPBaseMegastructure plutoMega = AoTDMegastructureRules.putMegastructure(pluto, "aotd_pluto_station");
-        SectorEntityToken station = sys.addCustomEntity(
-                PLUTO_STATION_ID,
-                "Pluto Mining Station",
-                "aotd_pluto_station",
-                Factions.NEUTRAL
-        );
-        station.setCircularOrbitPointingDown(pluto, pluto.getCircularOrbitAngle(), pluto.getRadius() + 220f, pluto.getCircularOrbitPeriod());
-        station.getMemoryWithoutUpdate().set(MusicPlayerPluginImpl.MUSIC_SET_MEM_KEY, "aotd_mega");
-        MiscellaneousThemeGenerator.makeDiscoverable(station, 40000, 3000f);
-
-        if (plutoMega != null && plutoMega.getSpec() != null) {
-            sector.getPlayerMemoryWithoutUpdate().set(
-                    "$aotd_mega_system_id_" + plutoMega.getSpec().getMegastructureID(),
-                    pluto.getStarSystem().getId()
-            );
-        }
 
         PlanetAPI minerva = sys.addPlanet(
                 MINERVA_ID,
