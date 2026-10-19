@@ -221,7 +221,6 @@ public class AOTDMegaStart extends CustomStart {
         MarketAPI nidMarket = nidavelir.getMarket();
         nidMarket.setFactionId(Factions.NEUTRAL);
         nidavelir.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
-
         String nidCond = nidMarket.addCondition("aotd_nidavelir_complex");
         nidMarket.getSpecificCondition(nidCond).setSurveyed(false);
         nidMarket.addCondition(Conditions.HABITABLE);
@@ -251,6 +250,7 @@ public class AOTDMegaStart extends CustomStart {
         }
         MarketAPI plutoMarket = pluto.getMarket();
         plutoMarket.setFactionId(Factions.NEUTRAL);
+        pluto.addTag(Tags.NOT_RANDOM_MISSION_TARGET);
         String plutoCond = plutoMarket.addCondition("aotd_pluto_station");
         plutoMarket.getSpecificCondition(plutoCond).setSurveyed(false);
         plutoMarket.addCondition(Conditions.HABITABLE);
@@ -317,19 +317,13 @@ public class AOTDMegaStart extends CustomStart {
                 continue;
             }
 
-            boolean removedAny = false;
-
             for (SectorEntityToken entity : new ArrayList<>(sys.getAllEntities())) {
                 if (entity == null) continue;
                 if (!isAotdEntity(entity)) continue;
 
                 removeEntityAndMarket(sector, sys, entity);
-                removedAny = true;
             }
 
-            if (removedAny && sys.getAllEntities().size() <= 1) {
-                sector.removeStarSystemNextFrame(sys);
-            }
         }
     }
 
@@ -346,22 +340,13 @@ public class AOTDMegaStart extends CustomStart {
     }
 
     private boolean isAotdEntity(SectorEntityToken entity) {
-        String id = entity.getId();
-        if (id != null && id.startsWith("aotd_")) return true;
+        if (entity == null) return false;
 
         MarketAPI market = entity.getMarket();
-        if (market != null) {
-            String marketId = market.getId();
-            if (marketId != null && marketId.startsWith("aotd_")) return true;
+        if (market == null) return false;
 
-            for (MarketConditionAPI cond : market.getConditions()) {
-                if (cond != null && cond.getId() != null && cond.getId().startsWith("aotd_")) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return market.hasCondition("aotd_nidavelir_complex")
+                || market.hasCondition("aotd_pluto_station");
     }
 
     private boolean isWhitelistedEntity(SectorEntityToken entity) {
