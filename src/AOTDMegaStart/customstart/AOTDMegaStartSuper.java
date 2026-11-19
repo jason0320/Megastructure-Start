@@ -175,6 +175,7 @@ public class AOTDMegaStartSuper extends CustomStart {
         }
 
         MarketAPI playerMarket = createMarket(playerPlanet, "aotd_perfect_sys_colony", 5, Factions.PLAYER);
+        playerMarket.addCondition("aotd_colony_development_cond");
         playerMarket.addCondition(Conditions.HABITABLE);
         playerMarket.addCondition(Conditions.MILD_CLIMATE);
         playerMarket.addCondition(Conditions.FARMLAND_RICH);
@@ -226,6 +227,7 @@ public class AOTDMegaStartSuper extends CustomStart {
 
         MarketAPI nidMarket = createMarket(nidavelir, "aotd_nidavelir_colony", 5, Factions.PLAYER);
         nidMarket.addCondition("aotd_nidavelir_complex");
+        nidMarket.addCondition("aotd_colony_development_cond");
         nidMarket.addCondition(Conditions.HABITABLE);
         nidMarket.addCondition(Conditions.FARMLAND_ADEQUATE);
         nidMarket.addCondition(Conditions.RUINS_VAST);
@@ -234,6 +236,13 @@ public class AOTDMegaStartSuper extends CustomStart {
         nidMarket.addCondition(Conditions.ORE_ULTRARICH);
         nidMarket.addCondition(Conditions.POPULATION_5);
         nidMarket.addIndustry(Industries.POPULATION);
+        nidMarket.addIndustry(Industries.SPACEPORT);
+        nidMarket.addIndustry(Industries.WAYSTATION);
+        nidMarket.addIndustry(Industries.BATTLESTATION);
+        nidMarket.addIndustry(Industries.FARMING);
+        nidMarket.addIndustry(Industries.MILITARYBASE);
+        nidMarket.addIndustry(Industries.PATROLHQ);
+        nidMarket.addIndustry(Industries.GROUNDDEFENSES);
         nidMarket.addSubmarket(Submarkets.LOCAL_RESOURCES);
         nidMarket.addSubmarket(Submarkets.SUBMARKET_STORAGE);
         nidMarket.getMemoryWithoutUpdate().set("$aotd_mega_already", true);
@@ -257,13 +266,22 @@ public class AOTDMegaStartSuper extends CustomStart {
 
         MarketAPI plutoMarket = createMarket(pluto, "aotd_pluto_colony", 5, Factions.PLAYER);
         plutoMarket.addCondition("aotd_pluto_station");
+        plutoMarket.addCondition("aotd_colony_development_cond");
         plutoMarket.addCondition(Conditions.HABITABLE);
         plutoMarket.addCondition(Conditions.FARMLAND_ADEQUATE);
         plutoMarket.addCondition(Conditions.RUINS_VAST);
         plutoMarket.addCondition(Conditions.RARE_ORE_ULTRARICH);
         plutoMarket.addCondition(Conditions.ORE_ULTRARICH);
+        plutoMarket.addCondition(Conditions.HOT);
         plutoMarket.addCondition(Conditions.POPULATION_5);
         plutoMarket.addIndustry(Industries.POPULATION);
+        plutoMarket.addIndustry(Industries.SPACEPORT);
+        plutoMarket.addIndustry(Industries.WAYSTATION);
+        plutoMarket.addIndustry(Industries.BATTLESTATION);
+        plutoMarket.addIndustry(Industries.FARMING);
+        plutoMarket.addIndustry(Industries.HEAVYINDUSTRY);
+        plutoMarket.addIndustry(Industries.PATROLHQ);
+        plutoMarket.addIndustry(Industries.GROUNDDEFENSES);
         plutoMarket.addSubmarket(Submarkets.LOCAL_RESOURCES);
         plutoMarket.addSubmarket(Submarkets.SUBMARKET_STORAGE);
         plutoMarket.getMemoryWithoutUpdate().set("$aotd_mega_already", true);

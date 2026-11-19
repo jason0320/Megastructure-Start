@@ -171,6 +171,7 @@ public class AOTDMegaStart extends CustomStart {
         }
 
         MarketAPI playerMarket = createMarket(playerPlanet, "aotd_perfect_sys_colony", 5, Factions.PLAYER);
+        playerMarket.addCondition("aotd_colony_development_cond");
         playerMarket.addCondition(Conditions.HABITABLE);
         playerMarket.addCondition(Conditions.MILD_CLIMATE);
         playerMarket.addCondition(Conditions.FARMLAND_RICH);
